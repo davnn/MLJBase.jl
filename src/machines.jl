@@ -117,22 +117,7 @@ err_length_mismatch(model::Supervised) = DimensionMismatch(
 check(model::Any, args...; kwargs) =
     throw(ArgumentError("Expected a `Model` instance, got $model. "))
 
-function check(model::Model, args...; full=false)
-
-    nowarns = true
-
-    F = fit_data_scitype(model)
-    F == Unknown && return true
-
-    S = Tuple{elscitype.(args)...}
-    if !(S <: F)
-        @warn warn_generic_scitype_mismatch(S, F)
-        nowarns = false
-    end
-end
-
-function check(model::Supervised, args... ; full=false)
-
+function check_supervised(model, args...; full)
     nowarns = true
 
     nargs = length(args)
@@ -161,10 +146,9 @@ function check(model::Supervised, args... ; full=false)
         throw(err_length_mismatch(model))
 
     return nowarns
-
 end
 
-function check(model::Unsupervised, args...; full=false)
+function check_unsupervised(model, args...; full)
     nowarns = true
 
     nargs = length(args)
@@ -182,7 +166,36 @@ function check(model::Unsupervised, args...; full=false)
     return nowarns
 end
 
+function check(model::Model, args...; full=false)
 
+    nowarns = true
+
+    F = fit_data_scitype(model)
+    F == Unknown && return true
+
+    S = Tuple{elscitype.(args)...}
+    if !(S <: F)
+        @warn warn_generic_scitype_mismatch(S, F)
+        nowarns = false
+    end
+end
+
+function check(model::Supervised, args... ; full=false)
+    check_supervised(model, args...; full)
+end
+
+function check(model::Unsupervised, args...; full=false)
+    check_unsupervised(model, args...; full)
+end
+
+function check(model::Union{UnsupervisedProbabilistic, UnsupervisedDeterministic}, args... ; full=false)
+    nargs = length(args)
+    if nargs <= 1
+        check_unsupervised(model, args...; full)
+    elseif nargs > 1
+        check_supervised(model, args...; full)
+    end
+end
 
 """
     machine(model, args...; cache=true)
