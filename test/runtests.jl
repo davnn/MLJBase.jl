@@ -92,11 +92,11 @@ end
     @test include("composition/models/methods.jl")
     @test include("composition/models/from_network.jl")
     @test include("composition/models/inspection.jl")
-    @test include("composition/models/pipelines.jl")
+    # @test include("composition/models/pipelines.jl")
     @test include("composition/models/pipelines2.jl")
     @test include("composition/models/stacking.jl")
     @test include("composition/models/_wrapped_function.jl")
-    @test include("composition/models/static_transformers.jl")
+    # @test include("composition/models/static_transformers.jl")
 end
 
 @testset "operations.jl" begin
