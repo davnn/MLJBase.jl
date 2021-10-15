@@ -31,17 +31,8 @@ function individuate(v)
     return ret
 end
 
-function as_type(prediction_type::Symbol)
-    if prediction_type == :deterministic
-        return Deterministic
-    elseif prediction_type == :probabilistic
-        return Probabilistic
-    elseif prediction_type == :interval
-        return Interval
-    else
-        return Unsupervised
-    end
-end
+# extend uppercasefirst for symbols
+uppercasefirst(s::Symbol) = Symbol(uppercasefirst(string(s)))
 
 _instance(x) = x
 _instance(T::Type{<:Model}) = T()
@@ -49,56 +40,40 @@ _instance(T::Type{<:Model}) = T()
 
 # # TYPES
 
-const SUPPORTED_TYPES_FOR_PIPELINES = [
-    :Deterministic,
-    :Probabilistic,
-    :Interval,
-    :Unsupervised,
-    :Static]
+const SUPPORTED_TYPES_FOR_PIPELINES = MLJModelInterface.ABSTRACT_MODEL_SUBTYPES
 
-const PIPELINE_TYPE_GIVEN_TYPE = Dict(
-    :Deterministic => :DeterministicPipeline,
-    :Probabilistic => :ProbabilisticPipeline,
-    :Interval      => :IntervalPipeline,
-    :Unsupervised  => :UnsupervisedPipeline,
-    :Static        => :StaticPipeline)
-
-const COMPOSITE_TYPE_GIVEN_TYPE = Dict(
-    :Deterministic => :DeterministicComposite,
-    :Probabilistic => :ProbabilisticComposite,
-    :Interval      => :IntervalComposite,
-    :Unsupervised  => :UnsupervisedComposite,
-    :Static        => :StaticComposite)
+const pipeline_type_given_type(type::Symbol) = Symbol(type, :Pipeline)
+const composite_type_given_type(type::Symbol) = Symbol(type, :Composite)
 
 const PREDICTION_TYPE_OPTIONS = [:deterministic,
                                  :probabilistic,
                                  :interval]
 
 for T_ex in SUPPORTED_TYPES_FOR_PIPELINES
-    P_ex = PIPELINE_TYPE_GIVEN_TYPE[T_ex]
-    C_ex = COMPOSITE_TYPE_GIVEN_TYPE[T_ex]
+    P_ex = pipeline_type_given_type(T_ex)
+    C_ex = composite_type_given_type(T_ex)
     quote
-        mutable struct $P_ex{N<:NamedTuple,operation} <: $C_ex
+        mutable struct $P_ex{N<:NamedTuple} <: $C_ex
             named_components::N
             cache::Bool
-            $P_ex(operation, named_components::N, cache) where N =
-                new{N,operation}(named_components, cache)
+            $P_ex(named_components::N, cache) where N =
+                new{N}(named_components, cache)
         end
     end |> eval
 end
 
-# hack an alias for the union type, `SomePipeline{N,operation}`:
-const _TYPE_EXS = map(values(PIPELINE_TYPE_GIVEN_TYPE)) do P_ex
-    Meta.parse("$(P_ex){N,operation}")
+# hack an alias for the union type, `SomePipeline{N}`:
+const PIPELINE_TYPES = pipeline_type_given_type.(SUPPORTED_TYPES_FOR_PIPELINES)
+const _TYPE_EXS = map(PIPELINE_TYPES) do P_ex
+    Meta.parse("$(P_ex){N}")
 end
 quote
-    const SomePipeline{N,operation} =
+    const SomePipeline{N} =
         Union{$(_TYPE_EXS...)}
 end |> eval
 
 components(p::SomePipeline) = values(getfield(p, :named_components))
 names(p::SomePipeline) = keys(getfield(p, :named_components))
-operation(p::SomePipeline{N,O}) where {N,O} = O
 
 # # GENERIC CONSTRUCTOR
 
@@ -110,26 +85,12 @@ const ERR_TOO_MANY_SUPERVISED = ArgumentError(
     "More than one supervised model in a pipeline is not permitted")
 const ERR_EMPTY_PIPELINE = ArgumentError(
     "Cannot create an empty pipeline. ")
-err_prediction_type_conflict(supervised_model, prediction_type) =
-    ArgumentError("The pipeline's last component model has type "*
-                  "`$(typeof(supervised_model))`, which conflicts "*
-                  "the declaration "*
-                  "`prediction_type=$prediction_type`. ")
-const INFO_TREATING_AS_DETERMINISTIC =
-    "Treating pipeline as a `Deterministic` predictor.\n"*
-    "To override, use `Pipeline` constructor with `prediction_type=...`. "*
-    "Options are $PRETTY_PREDICTION_OPTIONS. "
 const ERR_INVALID_PREDICTION_TYPE = ArgumentError(
-    "Invalid `prediction_type`. Options are $PRETTY_PREDICTION_OPTIONS. ")
-const WARN_IGNORING_PREDICTION_TYPE =
-    "Pipeline appears to have no supervised "*
-    "component models. Ignoring declaration "*
-    "`prediction_type=$(prediction_type)`. "
+    "Invalid `prediction_type` encountered.")
 const ERR_MIXED_PIPELINE_SPEC = ArgumentError(
     "Either specify all pipeline components without names, as in "*
     "`Pipeline(model1, model2)` or all specify names for all "*
     "components, as in `Pipeline(myfirstmodel=model1, mysecondmodel=model2)`. ")
-
 
 # The following combines its arguments into a named tuple, performing
 # a number of checks and modifications. Specifically, it checks
@@ -144,17 +105,9 @@ function pipe_named_tuple(names, components)
     # make keys unique:
     names = names |> individuate |> Tuple
 
-    # check sequence:
-    supervised_components = filter(components) do c
-        c isa Supervised
-    end
-    length(supervised_components) < 2 ||
-        throw(ERR_TOO_MANY_SUPERVISED)
-
     # return the named tuple:
     types = abstract_type.(components)
     NamedTuple{names,Tuple{types...}}(components)
-
 end
 
 """
@@ -238,8 +191,7 @@ To build more complicated non-branching pipelines, refer to the MLJ
 manual sections on composing models.
 
 """
-function Pipeline(args...; prediction_type=nothing,
-                  operation=predict,
+function Pipeline(args...;
                   cache=true,
                   kwargs...)
 
@@ -252,12 +204,6 @@ function Pipeline(args...; prediction_type=nothing,
 
     isempty(args) || isempty(kwargs) ||
         throw(ERR_MIXED_PIPELINE_SPEC)
-
-    operation in eval.(PREDICT_OPERATIONS) ||
-        throw(ERR_INVALID_OPERATION)
-
-    prediction_type in PREDICTION_TYPE_OPTIONS || prediction_type === nothing ||
-        throw(ERR_INVALID_PREDICTION_TYPE)
 
     # construct the named tuple of components:
     if isempty(args)
@@ -277,13 +223,10 @@ function Pipeline(args...; prediction_type=nothing,
 
     named_components = pipe_named_tuple(_names, components)
 
-    _pipeline(named_components, prediction_type, operation, cache)
+    _pipeline(named_components, cache)
 end
 
-function _pipeline(named_components::NamedTuple,
-                   prediction_type,
-                   operation,
-                   cache)
+function _pipeline(named_components::NamedTuple, cache)
 
     # This method assumes all arguments are valid and includes the
     # logic that determines which concrete pipeline's constructor
@@ -291,58 +234,41 @@ function _pipeline(named_components::NamedTuple,
 
     components = values(named_components)
 
-    # Is this a supervised pipeline?
+    # The pipeline is supervised if it contains at least one
+    # supervised component
     idx = findfirst(components) do c
-        c isa Supervised
+        typeof(c) <: Supervised
     end
     is_supervised = idx !== nothing
-    is_supervised && @inbounds supervised_model = components[idx]
 
-    # Is this a static pipeline? A component is *static* if it is an
-    # instance of `Static <: Unsupervised` *or* a callable (anything
-    # that is not a model, by assumption). When all the components are
-    # static, the pipeline will be a `StaticPipeline`.
+    # The pipeline is static if it contains only static components 
     static_components = filter(components) do m
-        !(m isa Model) || m isa Static
+        !(m isa Model) || typeof(m) <: Static
     end
-
     is_static = length(static_components) == length(components)
+
+    # determine the prediction type based on the last pipeline component
+    raw_pred_type = prediction_type(typeof(last(components)))
+    pred_type = raw_pred_type == :unknown ? :Transformer :
+                raw_pred_type == :probabilistic ? :Probabilistic :
+                raw_pred_type == :deterministic ? :Deterministic :
+                raw_pred_type == :interval ? :Interval :
+                throw(ERR_INVALID_PREDICTION_TYPE)
 
     # To make final pipeline type determination, we need to determine
     # the corresonding abstract type (eg, `Probablistic`) here called
     # `super_type`:
-    if is_supervised
-        supervised_is_last = last(components) === supervised_model
-        if prediction_type !== nothing
-            super_type = as_type(prediction_type)
-            supervised_is_last && !(supervised_model isa super_type) &&
-                throw(err_prediction_type_conflict(e, prediction_type))
-        elseif supervised_is_last
-            if operation != predict
-                super_type = Deterministic
-            else
-                super_type = abstract_type(supervised_model)
-            end
-        else
-            A = abstract_type(supervised_model)
-            A == Deterministic || operation !== predict ||
-                @info INFO_TREATING_AS_DETERMINISTIC
-            super_type = Deterministic
-        end
-    else
-        prediction_type === nothing ||
-            @warn WARN_IGNORING_PREDICTION_TYPE
-        super_type = is_static ? Static : Unsupervised
-    end
+    super_type = (is_supervised ? Symbol(:Supervised, pred_type) :
+                  is_static ? Symbol(:Static, pred_type) :
+                  Symbol(:Unsupervised, pred_type)) |> eval
 
     # dispatch on `super_type` to construct the appropriate type:
-    _pipeline(super_type, operation, named_components, cache)
-
+    _pipeline(super_type, named_components, cache)
 end
 
 # where the method called in the last line will be one of these:
 for T_ex in SUPPORTED_TYPES_FOR_PIPELINES
-    P_ex = PIPELINE_TYPE_GIVEN_TYPE[T_ex]
+    P_ex = pipeline_type_given_type(T_ex)
     quote
         _pipeline(::Type{<:$T_ex}, args...) =
             $P_ex(args...)
@@ -381,113 +307,115 @@ end
 
 # https://alan-turing-institute.github.io/MLJ.jl/dev/composing_models/#Learning-network-machines
 
+#
+#             StaticT      UnsupervisedT         StaticP
+# Pipeline(Standardizer(), KNNDetector(), ProbabilisticDetector())
+#
+# Xs, ys = source(X), source(y)
+# Xstd = transform(machine(Standardizer(), Xs))
+# scores = transform(machine(KNNDetector(), Xstd))
+# result = predict(machine(ProbabilisticDetector(), scores))
 
-# ## Methods to extend a pipeline learning network
-
-# The "front" of a pipeline network, as we grow it, consists of a
-# `predict` and a `transform` node. Both can be changed but only the
-# "active" node is propagated.  Initially `transform` is active;
-# `predict` only becomes active when a supervised model is
-# encountered, and this change is permanent.
-# https://github.com/JuliaAI/MLJClusteringInterface.jl/issues/10
-
-# `A == true` means `transform` is active
-struct Front{A,P<:AbstractNode,N<:AbstractNode}
-    predict::P
-    transform::N
-    Front(p::P, t::N, A) where {P,N} = new{A,P,N}(p, t)
-end
-active(f::Front{true})  = f.transform
-active(f::Front{false}) = f.predict
-
-function extend(front::Front{true},
-                component::Supervised,
-                cache,
-                op,
-                sources...)
-    a = active(front)
-    mach = machine(component, a, sources...; cache=cache)
-    Front(op(mach, a), transform(mach, a), false)
+function to_machine(component, next_input, cache, sources...)
+    mach = typeof(component) <: Static ? machine(component, cache=cache) :
+           machine(component, next_input, sources...; cache=cache)
+    return mach
 end
 
-function extend(front::Front{true}, component::Static, cache, args...)
-    mach = machine(component; cache=cache)
-    Front(front.predict, transform(mach, active(front)), true)
+function extend(prev_result, next_component, cache, sources...)
+    prev_component, prev_mach, prev_input = prev_result
+    op = typeof(prev_component) <: Transformer ? transform : predict
+    next_input = op(prev_mach, prev_input)
+    next_mach = to_machine(next_component, next_input, cache, sources...)
+    return (next_component, next_mach, next_input)
 end
-
-function extend(front::Front{false}, component::Static, cache, args...)
-    mach = machine(component; cache=cache)
-    Front(transform(mach, active(front)), front.transform, false)
-end
-
-function extend(front::Front{true}, component::Unsupervised, cache, args...)
-    a = active(front)
-    mach = machine(component, a; cache=cache)
-    Front(predict(mach, a), transform(mach, a), true)
-end
-
-function extend(front::Front{false}, component::Unsupervised, cache, args...)
-    a = active(front)
-    mach = machine(component, a; cache=cache)
-    Front(transform(mach, a), front.transform, false)
-end
-
-# fallback assumes `component` is a callable object:
-extend(front::Front{true}, component, args...) =
-    Front(front.predict, node(component, active(front)), true)
-extend(front::Front{false}, component, args...) =
-    Front(node(component, active(front)), front.transform, false)
-
 
 # ## The learning network machine
 
-const ERR_INVERSION_NOT_SUPPORTED = ErrorException(
-    "Applying `inverse_transform` to a "*
-    "pipeline that does not support it")
+const ERR_OP_NOT_SUPPORTED(op) = ErrorException(
+    "Applying `$op` to a pipeline "*
+    "that does not support it")
+
+# helper traits that should be in MLJ, or are there already?
+supports_transform(::Transformer) = true
+supports_transform(::Any) = false
+
+supports_predict(::Union{Probabilistic, Deterministic, Interval}) = true
+supports_predict(::Any) = false
+
+supports_predict_mode(::Probabilistic) = true
+supports_predict_mode(::Any) = false
+
+supports_predict_mean(::Probabilistic) = true
+supports_predict_mean(::Any) = false
+
+supports_predict_median(::Probabilistic) = true
+supports_predict_median(::Any) = false
+
+supports_predict_joint(::Any) = false
+supports_inverse_transform(::Any) = false
+
+# determine if a component supports operations and 
+# return the corresponding nodes if it does
+function get_nodes(machine, component, source0)
+    ops = [:transform, :predict, :predict_mode, :predict_mean, :predict_median, :predict_joint]
+    nodes = []
+
+    for op in ops
+        supports = Symbol(:supports_, op)
+        quote
+            push!($nodes, $supports($component) ?
+                $op($machine, $source0) :
+                ErrorNode(ERR_OP_NOT_SUPPORTED($op)))
+        end |> eval
+    end
+
+    return NamedTuple{Tuple(ops)}(nodes)
+end
 
 function pipeline_network_machine(super_type,
                                   cache,
-                                  operation,
                                   components,
                                   source0,
                                   sources...)
 
-    # initialize the network front:
-    front = Front(source0, source0, true)
+    # create the extend closure
+    _extend(prev, next) = extend(prev, next, cache, sources...)
 
-    # closure to use in reduction:
-    _extend(front, component) =
-        extend(front, component, cache, operation, sources...)
+    # create the initial result
+    comp0, compn = first(components), components[2:end]
+    mach0 = to_machine(comp0, source0, cache, sources...)
+    init0 = (comp0, mach0, source0)
 
-    # reduce to get the `predict` and `transform` nodes:
-    final_front = foldl(_extend, components, init=front)
-    pnode, tnode = final_front.predict, final_front.transform
+    # reduce all intermediate results
+    final_component, final_machine, final_input = foldl(_extend, compn, init=init0)
 
-    # backwards pass to get `inverse_transform` node:
-    if all(c -> c isa Unsupervised, components)
+    # get all trait-based available nodes
+    nodes = get_nodes(final_machine, final_component, final_input)
+
+    # backwards pass to get `inverse_transform` node
+    if all(c -> supports_inverse_transform(c), components)
         inode = source0
-        node = tnode
-        for i in eachindex(components)
+        node = nodes.transform
+        for _ in eachindex(components)
             mach = node.machine
             inode = inverse_transform(mach, inode)
             node =  first(mach.args)
         end
     else
-        inode = ErrorNode(ERR_INVERSION_NOT_SUPPORTED)
+        inode = ErrorNode(ERR_OP_NOT_SUPPORTED("inverse_transform"))
     end
 
-    machine(super_type(), source0, sources...;
-            predict=pnode, transform=tnode, inverse_transform=inode)
-
+    # create the final surrogate machine
+    machine(super_type(), source0, sources...; inverse_transform=inode, nodes...)
 end
-
 
 # # FIT METHOD
 
-function MMI.fit(pipe::SomePipeline{N,operation},
+function MMI.fit(pipe::SomePipeline{N},
                  verbosity::Integer,
                  arg0=source(),
-                 args...) where {N,operation}
+                 args...) where {N}
 
     source0 = source(arg0)
     sources = source.(args)
@@ -496,7 +424,6 @@ function MMI.fit(pipe::SomePipeline{N,operation},
 
     mach = pipeline_network_machine(abstract_type(pipe),
                                     pipe.cache,
-                                    operation,
                                     _components,
                                     source0,
                                     sources...)
@@ -535,8 +462,13 @@ function compose(m1::FuzzyModel, m2::FuzzyModel)
         @info INFO_AMBIGUOUS_CACHE
     end
 
-    _pipeline(named_components, nothing, operation(p2), cache)
+    _pipeline(named_components, cache)
 end
 
 compose(p1, p2::FuzzyModel) = compose(Pipeline(p1), p2)
 compose(p1::FuzzyModel, p2) = compose(p1, Pipeline(p2))
+
+# export all pipeline types
+for T in PIPELINE_TYPES
+    @eval(export $T)
+end
