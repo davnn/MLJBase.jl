@@ -6,7 +6,7 @@ import MLJBase
 using LinearAlgebra
 using ScientificTypes
 
-mutable struct FooBarRegressor <: MLJBase.Deterministic
+mutable struct FooBarRegressor <: MLJBase.SupervisedDeterministic
     lambda::Float64
 end
 

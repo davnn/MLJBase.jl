@@ -218,10 +218,10 @@ In addition to the operations named in the constructor, the methods
 `fit!`, `report`, and `fitted_params` can be applied as usual to the
 machine constructed.
 
-    machine(Probablistic(), args...; kwargs...)
-    machine(Deterministic(), args...; kwargs...)
-    machine(Unsupervised(), args...; kwargs...)
-    machine(Static(), args...; kwargs...)
+    machine(SupervisedProbablistic(), args...; kwargs...)
+    machine(SupervisedDeterministic(), args...; kwargs...)
+    machine(UnsupervisedTransformer(), args...; kwargs...)
+    machine(StaticTransformer(), args...; kwargs...)
 
 Same as above, but specifying explicitly the kind of model the
 learning network is to meant to represent.
@@ -237,7 +237,7 @@ Supposing a supervised learning network's final predictions are
 obtained by calling a node `yhat`, then the code
 
 ```julia
-mach = machine(Deterministic(), Xs, ys; predict=yhat)
+mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
 fit!(mach; rows=train)
 predictions = predict(mach, Xnew) # `Xnew` concrete data
 ```
@@ -257,7 +257,7 @@ node `Xs` for inputs, and in which the node `Xout` delivers the output
 of dimension reduction, and `yhat` the class labels, one can write
 
 ```julia
-mach = machine(Unsupervised(), Xs; transform=Xout, predict=yhat)
+mach = machine(UnsupervisedTransformer(), Xs; transform=Xout, predict=yhat)
 fit!(mach)
 transformed = transform(mach, Xnew) # `Xnew` concrete data
 predictions = predict(mach, Xnew)

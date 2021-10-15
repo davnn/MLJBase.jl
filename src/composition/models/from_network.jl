@@ -34,10 +34,10 @@ net_error(k::Int) = throw(ArgumentError("Learning network export error $k. "))
 _insert_subtyping(ex, subtype_ex) =
     Expr(:(<:), ex, subtype_ex)
 
-_exported_type(::Probabilistic) = :ProbabilisticComposite
-_exported_type(::Deterministic) = :DeterministicComposite
-_exported_type(::Unsupervised) = :UnsupervisedComposite
-_exported_type(::Static) = :StaticComposite
+_exported_type(::SupervisedProbabilistic) = :SupervisedProbabilisticComposite
+_exported_type(::SupervisedDeterministic) = :SupervisedDeterministicComposite
+_exported_type(::UnsupervisedTransformer) = :UnsupervisedTransformerComposite
+_exported_type(::StaticTransformer) = :StaticTransformerComposite
 
 function eval_and_reassign(modl, ex)
     s = gensym()
@@ -223,7 +223,7 @@ yhat = predict_mode(machine(tree, W, ys), W)
 A learning network machine is defined by
 
 ```julia
-mach = machine(Deterministic(), Xs, ys; predict=yhat)
+mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
 ```
 
 To specify a new `Deterministic` composite model type `WrappedTree` we

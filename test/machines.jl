@@ -98,7 +98,7 @@ end
     @test all([pdf(d1, c) ≈ pdf(d2, c) for c in MLJBase.classes(d1)])
 end
 
-mutable struct Scale <: MLJBase.Static
+mutable struct Scale <: MLJBase.StaticTransformer
     scaling::Float64
 end
 
@@ -148,7 +148,7 @@ end
 
 ## DUMMY UNSUPERVISED MODEL
 
-mutable struct Fozy <: Unsupervised end
+mutable struct Fozy <: UnsupervisedTransformer end
 MLJBase.fit(model::Fozy, verbosity, X) = minimum(X.matrix), nothing, nothing
 MLJBase.transform(model::Fozy, fitresult, newbox) =
     fill(fitresult, nrows(newbox.matrix))
@@ -159,7 +159,7 @@ MLJBase.selectrows(model::Fozy, I, X...) = (Box(X[1].matrix[I,:]),)
 
 ## BABY SUPERVISED MODEL WITH AN UPDATE METHOD
 
-mutable struct SomeModel <: Deterministic
+mutable struct SomeModel <: SupervisedDeterministic
     n::Int
 end
 

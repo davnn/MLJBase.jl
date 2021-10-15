@@ -14,7 +14,7 @@ A regressor that, for any new input pattern, predicts the univariate
 probability distribution best fitting the training target data. Use
 `predict_mean` to predict the mean value instead.
 """
-struct ConstantRegressor{D} <: MMI.Probabilistic end
+struct ConstantRegressor{D} <: MMI.SupervisedProbabilistic end
 
 function ConstantRegressor(; distribution_type=Distributions.Normal)
     model   = ConstantRegressor{distribution_type}()
@@ -52,7 +52,7 @@ MMI.predict(::ConstantRegressor, fitresult, Xnew) =
 ## THE CONSTANT DETERMINISTIC REGRESSOR (FOR TESTING)
 ##
 
-struct DeterministicConstantRegressor <: MMI.Deterministic end
+struct DeterministicConstantRegressor <: MMI.SupervisedDeterministic end
 
 function MMI.fit(::DeterministicConstantRegressor, verbosity::Int, X, y)
     fitresult = mean(y)
@@ -83,7 +83,7 @@ training target data. So, `pdf(d, level)` is the proportion of levels
 in the training data coinciding with `level`. Use `predict_mode` to
 obtain the training target mode instead.
 """
-mutable struct ConstantClassifier <: MMI.Probabilistic
+mutable struct ConstantClassifier <: MMI.SupervisedProbabilistic
     testing::Bool
     bogus::Int
 end
@@ -144,7 +144,7 @@ MMI.predict(::ConstantClassifier, fitresult, Xnew) =
 ## DETERMINISTIC CONSTANT CLASSIFIER (FOR TESTING)
 ##
 
-struct DeterministicConstantClassifier <: MMI.Deterministic end
+struct DeterministicConstantClassifier <: MMI.SupervisedDeterministic end
 
 function MMI.fit(::DeterministicConstantClassifier, verbosity::Int, X, y)
     # dump missing target values and make into a regular array:

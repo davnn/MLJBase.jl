@@ -9,7 +9,7 @@ using StableRNGs
 
 rng = StableRNG(698790187)
 
-struct MyTransformer2 <: Static
+struct MyTransformer2 <: StaticTransformer
     ftr::Symbol
 end
 
@@ -27,12 +27,12 @@ broadcast_mode(v) = mode.(v)
 doubler(y) = 2*y
 
 @testset "pipeline helpers" begin
-    @test MLJBase.super_type(KNNRegressor()) == Deterministic
-    @test MLJBase.super_type(ConstantClassifier()) == Probabilistic
-    @test MLJBase.super_type(Standardizer()) == Unsupervised
-    @test MLJBase.super_type(:deterministic) == Deterministic
-    @test MLJBase.super_type(:probabilistic) == Probabilistic
-    @test MLJBase.super_type(:something) == Unsupervised
+    @test MLJBase.super_type(KNNRegressor()) == SupervisedDeterministic
+    @test MLJBase.super_type(ConstantClassifier()) == SupervisedProbabilistic
+    @test MLJBase.super_type(Standardizer()) == UnsupervisedTransformer
+    @test MLJBase.super_type(:deterministic) == SupervisedDeterministic
+    @test MLJBase.super_type(:probabilistic) == SupervisedProbabilistic
+    @test MLJBase.super_type(:something) == UnsupervisedTransformer
 end
 
 @testset "linear_learning_network" begin
@@ -49,7 +49,7 @@ end
         Unsupervised, Xs, nothing, nothing, nothing, nothing,
         true, predict, models...)
     tree= mach.fitresult.transform |> MLJBase.tree
-    @test mach.model isa UnsupervisedSurrogate
+    @test mach.model isa UnsupervisedTransformerSurrogate
     @test tree.operation == transform
     @test tree.model == h
     @test tree.arg1.operation == transform
@@ -63,7 +63,7 @@ end
         Deterministic, Xs, ys, nothing, nothing, nothing,
         true, predict, models...)
     tree= mach.fitresult.predict |> MLJBase.tree
-    @test mach.model isa DeterministicSurrogate
+    @test mach.model isa SupervisedDeterministicSurrogate
     @test tree.operation == predict
     @test tree.model == k
     @test tree.arg1.operation == transform
@@ -78,7 +78,7 @@ end
         Unsupervised, Xs, nothing, nothing, nothing, nothing,
         true, predict, models...)
     tree= mach.fitresult.transform |> MLJBase.tree
-    @test mach.model isa UnsupervisedSurrogate
+    @test mach.model isa UnsupervisedTransformerSurrogate
     @test tree.operation == t
     @test tree.model == nothing
     @test tree.arg1.operation == m
@@ -91,7 +91,7 @@ end
         Deterministic, Xs, ys, nothing, u, nothing,
         true, predict, models...)
     tree= mach.fitresult.predict |> MLJBase.tree
-    @test mach.model isa DeterministicSurrogate
+    @test mach.model isa SupervisedDeterministicSurrogate
     @test tree.operation == inverse_transform
     @test tree.model == u
     @test tree.arg1.operation == predict
@@ -114,7 +114,7 @@ end
         MLJBase.WrappedFunction(exp),
         true, predict, models...)
     tree= mach.fitresult.predict |> MLJBase.tree
-    @test mach.model isa DeterministicSurrogate
+    @test mach.model isa SupervisedDeterministicSurrogate
     @test tree.operation == transform
     @test tree.model.f == exp
     @test tree.arg1.operation == predict
@@ -135,7 +135,7 @@ end
         MLJBase.WrappedFunction(exp),
         true, predict, models...)
     tree= mach.fitresult.predict |> MLJBase.tree
-    @test mach.model isa DeterministicSurrogate
+    @test mach.model isa SupervisedDeterministicSurrogate
     @test tree.operation == transform
     @test tree.model.f == exp
     @test tree.arg1.operation == broadcast_mode
@@ -157,7 +157,7 @@ end
         Deterministic, Xs, ys, nothing, u, nothing,
         true, predict, models...)
     tree = mach.fitresult.predict |> MLJBase.tree
-    @test mach.model isa DeterministicSurrogate
+    @test mach.model isa SupervisedDeterministicSurrogate
     @test tree.operation == inverse_transform
     @test tree.model == u
     @test tree.arg1.operation == broadcast_mode
@@ -212,20 +212,20 @@ end
     # check a probablistic case:
     models = [f, c]
     mach = MLJBase.linear_learning_network_machine(
-        Probabilistic, Xs, ys, nothing, u, nothing,
+        SupervisedProbabilistic, Xs, ys, nothing, u, nothing,
         true, predict, models...)
-    @test mach.model isa ProbabilisticSurrogate
+    @test mach.model isa SupervisedProbabilisticSurrogate
 
     # check a static case:
     models = [m, t]
     mach = MLJBase.linear_learning_network_machine(
-        Static, Xs, ys, nothing, nothing, nothing,
+        StaticTransformer, Xs, ys, nothing, nothing, nothing,
         true, predict, models...)
-    @test mach.model isa StaticSurrogate
+    @test mach.model isa StaticTransformerSurrogate
 
     # build a linear network for training:
     mach = MLJBase.linear_learning_network_machine(
-        Deterministic, Xs, ys, nothing, u, nothing,
+        SupervisedDeterministic, Xs, ys, nothing, u, nothing,
         true, predict, f, k)
 
     # build the same network by hand:
@@ -460,7 +460,7 @@ ys = source(y)
 p = @pipeline OneHotEncoder ConstantClassifier
 mach = machine(p, X, y)
 fit!(mach, verbosity=verb)
-@test p isa ProbabilisticComposite
+@test p isa SupervisedProbabilisticComposite
 pdf(predict(mach, X)[1], 'f') ≈ 4/7
 
 # test invalid replacement of classifier with regressor throws
@@ -569,7 +569,7 @@ p = @pipeline(OneHotEncoder,
               ConstantRegressor,
               operation=predict_mean)
 
-@test p isa Deterministic
+@test p isa SupervisedDeterministic
 
 mach = fit!(machine(p, X, height), verbosity=0)
 @test scitype(predict(mach, X)) == AbstractVector{Continuous}

@@ -2,9 +2,9 @@
 
 # For example, we want to define
 
-# abstract type ProbabilisticComposite <: Probabilistic end
-# struct ProbabilisticSurrogate <: Probabilistic end
-# Probabilistic() = ProbablisiticSurrogate()
+# abstract type ProbabilisticComposite <: SupervisedProbabilistic end
+# struct ProbabilisticSurrogate <: SupervisedProbabilistic end
+# SupervisedProbabilistic() = SupervisedProbablisiticSurrogate()
 
 # but also want this for all the abstract `Model` subtypes:
 
@@ -38,11 +38,6 @@ MLJModelInterface.package_name(::Type{<:Union{Composite,Surrogate}}) = "MLJBase"
 for T in surrogate_types
     MLJModelInterface.load_path(::Type{T}) = string("MLJBase.", T)
 end
-
-# aliases for legacy code:
-const DeterministicNetwork = DeterministicComposite
-const ProbabilisticNetwork = ProbabilisticComposite
-const UnsupervisedNetwork = UnsupervisedComposite
 
 export MLJType, Model, Surrogate, Composite
 for T in vcat(MMI.ABSTRACT_MODEL_SUBTYPES, COMPOSITE_TYPES, SURROGATE_TYPES)

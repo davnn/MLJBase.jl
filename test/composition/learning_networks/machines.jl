@@ -10,7 +10,7 @@ rng = StableRNG(616161)
 
 
 # A dummy clustering model:
-mutable struct DummyClusterer <: Unsupervised
+mutable struct DummyClusterer <: UnsupervisedTransformer
     n::Int
 end
 DummyClusterer(; n=3) = DummyClusterer(n)
@@ -41,7 +41,7 @@ MLJBase.predict(model::DummyClusterer, fitresult, Xnew) =
     yhat = predict(m, W)
     Wout = transform(m, W)
 
-    mach = machine(Unsupervised(), Xs; predict=yhat, transform=Wout)
+    mach = machine(UnsupervisedTransformer(), Xs; predict=yhat, transform=Wout)
     @test mach.args == (Xs, )
     @test mach.args[1] == Xs
     fit!(mach, force=true, verbosity=0)
@@ -55,9 +55,9 @@ MLJBase.predict(model::DummyClusterer, fitresult, Xnew) =
     mm = machine(ConstantClassifier(), W, ys)
     yhat = predict(mm, W)
     @test_throws Exception machine(predict=yhat)
-    mach = machine(Probabilistic(), Xs, ys; predict=yhat)
-    @test mach.model isa Probabilistic
-    @test_throws ArgumentError machine(Probabilistic(), Xs, ys)
+    mach = machine(SupervisedProbabilistic(), Xs, ys; predict=yhat)
+    @test mach.model isa SupervisedProbabilistic
+    @test_throws ArgumentError machine(SupervisedProbabilistic(), Xs, ys)
 
     # supervised - predict_mode
     fit!(mach, verbosity=0)
@@ -72,7 +72,7 @@ MLJBase.predict(model::DummyClusterer, fitresult, Xnew) =
     Xs = source(X); ys = source(y)
     mm = machine(ConstantRegressor(), Xs, ys)
     yhat = predict(mm, Xs)
-    mach = fit!(machine(Probabilistic(), Xs, ys; predict=yhat), verbosity=0)
+    mach = fit!(machine(SupervisedProbabilistic(), Xs, ys; predict=yhat), verbosity=0)
     @test predict_mean(mach, X) ≈ mean.(predict(mach, X))
     @test predict_median(mach, X) ≈ median.(predict(mach, X))
 
@@ -116,7 +116,7 @@ yhat = exp(zhat)
     knn2 = deepcopy(knn)
 
     # duplicate a learning network machine:
-    mach  = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach  = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     mach2 = replace(mach, hot=>hot2, knn=>knn2,
                     ys=>source(ys.data);
                     empty_unspecified_sources=true)
@@ -172,7 +172,7 @@ yhat = exp(zhat)
                          (:train, oakM2), (:train, knnM2)])
 end
 
-mutable struct DummyComposite <: DeterministicComposite
+mutable struct DummyComposite <: SupervisedDeterministicComposite
     stand1
     stand2
 end
@@ -187,7 +187,7 @@ end
     mach2 = machine(model.stand2, X1)
     X2 = transform(mach2, X1)
 
-    mach = machine(Unsupervised(), Xs; transform=X2)
+    mach = machine(UnsupervisedTransformer(), Xs; transform=X2)
     @test_logs((:error, r"The hyper"),
                @test_throws(ArgumentError,
                             MLJBase.network_model_names(model, mach)))

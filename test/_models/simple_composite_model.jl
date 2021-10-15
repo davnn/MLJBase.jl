@@ -11,11 +11,10 @@ Construct a composite model consisting of a transformer
 intended for internal testing .
 
 """
-mutable struct SimpleDeterministicCompositeModel{L<:Deterministic,
-                             T<:Unsupervised} <: DeterministicComposite
+mutable struct SimpleDeterministicCompositeModel{L<:SupervisedDeterministic,
+                             T<:UnsupervisedTransformer} <: SupervisedDeterministicComposite
     model::L
     transformer::T
-
 end
 
 function SimpleDeterministicCompositeModel(;
@@ -28,7 +27,6 @@ function SimpleDeterministicCompositeModel(;
     isempty(message) || @warn message
 
     return composite
-
 end
 
 MLJBase.is_wrapper(::Type{<:SimpleDeterministicCompositeModel}) = true
@@ -44,7 +42,7 @@ function MLJBase.fit(composite::SimpleDeterministicCompositeModel,
     l = machine(composite.model, Xt, y)
     yhat = predict(l, Xt)
 
-    mach = machine(Deterministic(), X, y; predict=yhat)
+    mach = machine(SupervisedDeterministic(), X, y; predict=yhat)
 
     return!(mach, composite, verbosity)
 end

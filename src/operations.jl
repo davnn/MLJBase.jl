@@ -11,8 +11,9 @@
 #
 # 2. `predict(machine::Machine, X::Node) = node(predict, machine, X)`
 #
-# Finally, for a `model` that is `ProbabilisticComposite`,
-# `DetermisiticComposite`, or `UnsupervisedComposite`, we want
+# Finally, for a `model` that is `SupervisedProbabilisticComposite`,
+# `SupervisedDetermisiticComposite`, or
+# `UnsupervisedTransformerComposite`, we want
 #
 # 3. `predict(model, fitresult, X) = fitresult.predict(X)`
 #
@@ -129,7 +130,13 @@ for (operation, fallback) in [(:predict_mode, :mode),
                               (:predict_mean, :mean),
                               (:predict_median, :median)]
     ex = quote
-        function $(operation)(m::Union{ProbabilisticComposite,ProbabilisticSurrogate},
+        function $(operation)(m::Union{
+            SupervisedProbabilisticComposite,
+            SupervisedProbabilisticSurrogate,
+            UnsupervisedProbabilisticComposite,
+            UnsupervisedProbabilisticSurrogate,
+            StaticProbabilisticComposite,
+            StaticProbabilisticSurrogate},
                               fitresult,
                               Xnew)
             if haskey(fitresult, $(QuoteNode(operation)))

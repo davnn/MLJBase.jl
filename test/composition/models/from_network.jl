@@ -34,7 +34,7 @@ uhat = 0.5*(predict(knnM, W) + predict(oakM, W))
 zhat = inverse_transform(standM, uhat)
 yhat = exp(zhat)
 
-mach_ex = :(machine(Deterministic(), Xs, ys; predict=yhat))
+mach_ex = :(machine(SupervisedDeterministic(), Xs, ys; predict=yhat))
 
 ## TESTING `from_network_preprocess`
 
@@ -50,7 +50,7 @@ ex = Meta.parse(
 mach_, modeltype_ex, struct_ex, no_fields, dic =
     MLJBase.from_network_preprocess(TestFromComposite, mach_ex, ex)
 eval(Parameters.with_kw(struct_ex, TestFromComposite, false))
-@test supertype(CompositeX) == DeterministicComposite
+@test supertype(CompositeX) == SupervisedDeterministicComposite
 composite = CompositeX()
 @test composite.knn_rgs == knn
 @test composite.one_hot_enc == hot
@@ -59,7 +59,7 @@ composite = CompositeX()
 
 ex = Meta.parse(
     "begin
-         mutable struct Composite4 <: ProbabilisticComposite
+         mutable struct Composite4 <: SupervisedProbabilisticComposite
              knn_rgs=knn
              one_hot_enc=hot
          end
@@ -67,7 +67,7 @@ ex = Meta.parse(
 mach_, modeltype_ex, struct_ex =
     MLJBase.from_network_preprocess(TestFromComposite, mach_ex, ex)
 eval(Parameters.with_kw(struct_ex, TestFromComposite, false))
-@test supertype(Composite4) == ProbabilisticComposite
+@test supertype(Composite4) == SupervisedProbabilisticComposite
 
 ex = Meta.parse(
     "mutable struct Composite2
@@ -83,7 +83,7 @@ composite = Composite2()
 
 ex = Meta.parse(
     "begin
-         mutable struct Composite6 <: Probabilistic
+         mutable struct Composite6 <: SupervisedProbabilistic
              knn_rgs=knn
              one_hot_enc=hot
          end
@@ -126,7 +126,7 @@ ex = Meta.parse(
 
 ex = Meta.parse(
     "begin
-         mutable struct Composite7 < Probabilistic
+         mutable struct Composite7 < SupervisedProbabilistic
              knn_rgs=knn
              one_hot_enc=hot
          end
@@ -161,7 +161,7 @@ VERSION ≥ v"1.3.0-" &&
 
 # test that you cannot leave "default" component models unspecified:
 modeltype_ex = :Composite9
-struct_ex = :(mutable struct Composite9 <: DeterministicComposite
+struct_ex = :(mutable struct Composite9 <: SupervisedDeterministicComposite
               knn_rgs::KNNRegressor
               one_hot_enc = hot
               end)
@@ -190,7 +190,7 @@ uhat = 0.5*(predict(knnM, W) + predict(oakM, W))
 zhat = inverse_transform(standM, uhat)
 yhat = exp(zhat)
 
-@from_network machine(Deterministic(), Xs, ys, ws; predict=yhat) begin
+@from_network machine(SupervisedDeterministic(), Xs, ys, ws; predict=yhat) begin
     mutable struct CompositeX1
         knn_rgs=knn
         one_hot_enc=hot
@@ -204,7 +204,7 @@ model = CompositeX1()
 predict(fit!(machine(model, X, y, w), verbosity=-1), X);
 
 # unsupervised:
-@from_network machine(Unsupervised(), Xs; transform=W) begin
+@from_network machine(UnsupervisedTransformer(), Xs; transform=W) begin
     mutable struct CompositeX2
         one_hot_enc=hot
     end
@@ -223,7 +223,7 @@ elm = DecisionTreeClassifier()
 elmM = machine(elm, H, ys)
 yhat = predict(elmM, H)
 
-@from_network machine(Probabilistic(), Xs, ys; predict=yhat) begin
+@from_network machine(SupervisedProbabilistic(), Xs, ys; predict=yhat) begin
     mutable struct CompositeX3
         selector=fea
         one_hot=hot
@@ -258,7 +258,7 @@ uhat = 0.5*(predict(knnM, W) + predict(oakM, W))
 zhat = inverse_transform(standM, uhat)
 yhat = exp(zhat)
 
-mach = machine(Deterministic(), Xs, ys; predict=yhat)
+mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
 
 @from_network mach begin
     mutable struct Composite10
@@ -304,7 +304,7 @@ multistand = Standardizer()
 multistandM = machine(multistand, W)
 W2 = transform(multistandM, W)
 
-mach = machine(Unsupervised(), Xs; transform=W2)
+mach = machine(UnsupervisedTransformer(), Xs; transform=W2)
 
 @from_network mach begin
     mutable struct MyTransformer
@@ -366,7 +366,7 @@ fit!(yhat, verbosity=0)
 fit!(yhat, rows=1:div(N,2), verbosity=0)
 yhat(rows=1:div(N,2));
 
-mach = machine(Probabilistic(), Xs, ys, ws; predict=yhat)
+mach = machine(SupervisedProbabilistic(), Xs, ys, ws; predict=yhat)
 
 @from_network mach begin
     mutable struct MyComposite
@@ -395,7 +395,7 @@ posterior = predict(mach, Xnew)[1]
 @test abs(pdf(posterior, 'b')/(4*pdf(posterior, 'c'))  - 1) < 0.19
 
 # composite with no fields:
-mach = machine(Probabilistic(), Xs, ys, ws; predict=yhat)
+mach = machine(SupervisedProbabilistic(), Xs, ys, ws; predict=yhat)
 @from_network mach begin
     struct CompositeWithNoFields
     end
@@ -407,7 +407,7 @@ mach = fit!(machine(composite_with_no_fields, X, y), verbosity=0)
 ## EXPORTING A TRANSFORMER WITH PREDICT AND TRANSFORM
 
 # A dummy clustering model:
-mutable struct DummyClusterer <: Unsupervised
+mutable struct DummyClusterer <: UnsupervisedTransformer
     n::Int
 end
 DummyClusterer(; n=3) = DummyClusterer(n)
@@ -435,11 +435,11 @@ m = machine(clust, W)
 yhat = predict(m, W)
 Wout = transform(m, W)
 fit!(glb(yhat, Wout), verbosity=0)
-mach = machine(Unsupervised(), Xs; predict=yhat, transform=Wout)
+mach = machine(UnsupervisedTransformer(), Xs; predict=yhat, transform=Wout)
 
 @from_network mach begin
     mutable struct WrappedClusterer
-        clusterer::Unsupervised = clust
+        clusterer::UnsupervisedTransformer = clust
     end
     input_scitype = Table(Continuous,Multiclass)
 end
@@ -456,7 +456,7 @@ age = [23, 45, 34, 25, 67]
 X = (age = age,
      gender = categorical(['m', 'm', 'f', 'm', 'f']))
 
-struct MyStaticTransformer <: Static
+struct MyStaticTransformer <: StaticTransformer
     ftr::Symbol
 end
 
@@ -467,7 +467,7 @@ Xs = source()
 W = transform(machine(MyStaticTransformer(:age)), Xs)
 Z = 2*W
 
-@from_network machine(Static(), Xs; transform=Z) begin
+@from_network machine(StaticTransformer(), Xs; transform=Z) begin
     struct NoTraining
     end
 end
@@ -528,7 +528,7 @@ y2 = predict(m2, X);
 X_judge = MLJBase.table(hcat(y1, y2))
 yhat = predict(m_judge, X_judge)
 
-@from_network machine(Deterministic(), X, y; predict=yhat) begin
+@from_network machine(SupervisedDeterministic(), X, y; predict=yhat) begin
     mutable struct MyStack
         regressor1=model1
         regressor2=model2
@@ -566,7 +566,7 @@ mach3 = machine(rgs, W, z)
 zhat = predict(mach3, W)
 yhat = inverse_transform(mach1, zhat)
 
-@from_network machine(Deterministic(), X, y; predict=yhat) begin
+@from_network machine(SupervisedDeterministic(), X, y; predict=yhat) begin
     mutable struct CompositeA
         rgs=rgs
         stand=stand

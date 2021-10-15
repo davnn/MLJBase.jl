@@ -35,12 +35,7 @@ err_incompatible_prediction_types(model, measure) = ArgumentError(
 ## MODEL TYPES THAT CAN BE EVALUATED
 
 # not exported:
-const Measurable = Union{Supervised,
-                         ProbabilisticSupervisedDetector,
-                         ProbabilisticUnsupervisedDetector,
-                         DeterministicSupervisedDetector,
-                         DeterministicUnsupervisedDetector}
-
+const Measurable = Union{Probabilistic, Deterministic, Interval}
 
 # ==================================================================
 ## RESAMPLING STRATEGIES
@@ -509,7 +504,7 @@ function _check_measure(measure, operation, model, y)
             "\nscitype of target = $T but target_scitype($measure) = "*
             "$(target_scitype(measure))."*avoid))
 
-    incompatible = model isa Probabilistic &&
+    incompatible = model isa SupervisedProbabilistic &&
         operation == predict &&
         prediction_type(measure) != :probabilistic
 
@@ -530,12 +525,12 @@ function _check_measure(measure, operation, model, y)
             suggestion = ""
         end
         throw(ArgumentError(
-            "\n$model <: Probabilistic but prediction_type($measure) = "*
+            "\n$model <: SupervisedProbabilistic but prediction_type($measure) = "*
             ":$(prediction_type(measure)). "*suggestion*avoid))
     end
 
-    model isa Deterministic && prediction_type(measure) != :deterministic &&
-        throw(ArgumentError("$model <: Deterministic but "*
+    model isa SupervisedDeterministic && prediction_type(measure) != :deterministic &&
+        throw(ArgumentError("$model <: SupervisedDeterministic but "*
                             "prediction_type($measure) ="*
               ":$(prediction_type(measure))."*avoid))
 
@@ -550,7 +545,6 @@ _check_measures(measures, operations, model, y) = begin
 end
 
 function _actual_measures(measures, model)
-
     if measures === nothing
         candidate = default_measure(model)
         candidate ===  nothing && error("You need to specify measure=... ")
@@ -562,7 +556,6 @@ function _actual_measures(measures, model)
     end
 
     return _measures
-
 end
 
 function _check_weights(weights, nrows)
@@ -907,8 +900,21 @@ wk_options...)`.  See the machine version `evaluate!` for the complete
 list of options.
 
 """
-evaluate(model::Measurable, args...; cache=true, kwargs...) =
+evaluate(model::Measurable, args...; cache=true, kwargs...) = begin
     evaluate!(machine(model, args...; cache=cache); kwargs...)
+end
+
+# TODO: we could also change evaluate to enable evaluation of unsupervised
+# or static models, instead of changing their allowed input types, but
+# evaluate! would then differ from evaluate
+# args = ignore_data(model, args)
+# function ignore_data(model, args)
+#     model_type = typeof(model)
+#     has_args = length(args) > 0
+#     return model_type <: Static ? () :
+#            model_type <: Unsupervised ? (has_args ? first(args) : ()) :
+#            args
+# end
 
 # -------------------------------------------------------------------
 # Resource-specific methods to distribute a function parameterized by

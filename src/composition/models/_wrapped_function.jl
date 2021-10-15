@@ -17,7 +17,7 @@ $STATIC_TRANSFORMER_DESCR
 
 * `f=identity`: function or callable object to use for the data transformation.
 """
-mutable struct WrappedFunction <: MLJBase.Static
+mutable struct WrappedFunction <: MLJBase.StaticTransformer
     f
 end
 WrappedFunction(;f=identity) = WrappedFunction(f)

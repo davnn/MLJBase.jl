@@ -9,7 +9,7 @@ import Random.seed!
 seed!(1234)
 
 
-struct YourTransformer <: Static
+struct YourTransformer <: StaticTransformer
     ftr::Symbol
 end
 
@@ -38,7 +38,7 @@ comp1 = @pipeline f Standardizer knn target=UnivariateBoxCoxTransformer
 e = evaluate(comp1, X, y, measure=mae, resampling=Holdout(), verbosity=0)
 
 # 2. function with parameters in a pipeline:
-mutable struct GreatTransformer <: Static
+mutable struct GreatTransformer <: StaticTransformer
     ftr::Symbol
 end
 MLJBase.transform(transf::GreatTransformer, verbosity, X) =
@@ -67,7 +67,7 @@ knn_mach = machine(knn, W, z)
 zhat = predict(knn_mach, W)
 yhat = inverse_transform(box_mach, zhat)
 
-@from_network machine(Deterministic(), Xs, ys; predict=yhat) begin
+@from_network machine(SupervisedDeterministic(), Xs, ys; predict=yhat) begin
     mutable struct Comp3
         rgs=knn
     end
@@ -91,7 +91,7 @@ z = transform(box_mach, ys)
 knn_mach = machine(knn, W, z)
 zhat = predict(knn_mach, W)
 yhat = inverse_transform(box_mach, zhat)
-@from_network machine(Deterministic(), Xs, ys; predict=yhat) begin
+@from_network machine(SupervisedDeterministic(), Xs, ys; predict=yhat) begin
     mutable struct Comp4
         transf=inserter
         rgs=knn

@@ -21,7 +21,7 @@ import StatsBase
     using .Threads
 end
 
-struct DummyInterval <: Interval end
+struct DummyInterval <: SupervisedInterval end
 dummy_interval=DummyInterval()
 
 

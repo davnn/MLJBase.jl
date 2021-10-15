@@ -3,7 +3,7 @@ module TestOneDimensionalRanges
 using Test
 using MLJBase
 
-mutable struct DummyModel <: Deterministic
+mutable struct DummyModel <: SupervisedDeterministic
     K::Int
     metric::Float64
     kernel::Char
@@ -11,7 +11,7 @@ end
 
 dummy_model = DummyModel(4, 9.5, 'k')
 
-mutable struct SuperModel <: Deterministic
+mutable struct SuperModel <: SupervisedDeterministic
     lambda::Float64
     model1::DummyModel
     model2::DummyModel

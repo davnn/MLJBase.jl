@@ -11,7 +11,7 @@ using OrderedCollections
 import Random.seed!
 seed!(1234)
 
-mutable struct Rubbish <: DeterministicComposite
+mutable struct Rubbish <: SupervisedDeterministicComposite
     model_in_network
     model_not_in_network
     some_other_variable
@@ -28,7 +28,7 @@ X, y = make_regression(10, 2)
     W = transform(mach0, Xs)
     mach1 = machine(model.model_in_network, W, ys)
     yhat = predict(mach1, W)
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     fitresult, cache, _ = return!(mach, model, 0)
     @test cache.network_model_names == [:model_in_network, nothing]
     old_model = cache.old_model
@@ -68,7 +68,7 @@ function MLJBase.fit(model::Rubbish, verbosity, X, y)
     ys = source(y)
     mach1 = machine(model.model_in_network, Xs, ys)
     yhat = predict(mach1, Xs)
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     fit!(mach, verbosity=verbosity)
     return mach()
 end
@@ -78,7 +78,7 @@ end
     ys = source(y)
     mach1 = machine(model.model_in_network, Xs, ys)
     yhat = predict(mach1, Xs)
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     fit!(mach, verbosity=-1)
     @test_deprecated mach();
 
@@ -93,7 +93,7 @@ function MLJBase.fit(model::Rubbish, verbosity, X, y)
     ys = source(y)
     mach1 = machine(model.model_in_network, Xs, ys)
     yhat = predict(mach1, Xs)
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     return!(mach, model, verbosity)
 end
 
@@ -207,7 +207,7 @@ selector_model = FeatureSelector()
 
 end
 
-mutable struct WrappedRidge <: DeterministicComposite
+mutable struct WrappedRidge <: SupervisedDeterministicComposite
     ridge
 end
 
@@ -230,7 +230,7 @@ end
         zhat = predict(ridgeM, W)
         yhat = inverse_transform(boxcoxM, zhat)
 
-        mach = machine(Deterministic(), Xs, ys; predict=yhat)
+        mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
         return!(mach, model, verbosity)
     end
 
@@ -253,7 +253,7 @@ end
 #end
 
 # A dummy clustering model:
-mutable struct DummyClusterer <: Unsupervised
+mutable struct DummyClusterer <: UnsupervisedTransformer
     n::Int
 end
 DummyClusterer(; n=3) = DummyClusterer(n)
@@ -272,7 +272,7 @@ MLJBase.predict(model::DummyClusterer, fitresult, Xnew) =
     [fill(fitresult[1], nrows(Xnew))...]
 
 # A wrap of above model:
-mutable struct WrappedDummyClusterer <: UnsupervisedComposite
+mutable struct WrappedDummyClusterer <: UnsupervisedTransformerComposite
     model
 end
 WrappedDummyClusterer(; model=DummyClusterer()) =
@@ -285,7 +285,7 @@ WrappedDummyClusterer(; model=DummyClusterer()) =
         m = machine(model.model, W)
         yhat = predict(m, W)
         Wout = transform(m, W)
-        mach = machine(Unsupervised(), Xs; predict=yhat, transform=Wout)
+        mach = machine(UnsupervisedTransformer(), Xs; predict=yhat, transform=Wout)
         return!(mach, model, verbosity)
     end
     X, _ = make_regression(10, 5);
@@ -305,8 +305,8 @@ end
 ## COMPOSITE WITH COMPONENT MODELS STORED IN NTUPLE
 
 # `modelnames` is a tuple of `Symbol`s, one for each `model` in `models`:
-mutable struct Averager{modelnames} <: DeterministicComposite
-    models::NTuple{<:Any,Deterministic}
+mutable struct Averager{modelnames} <: SupervisedDeterministicComposite
+    models::NTuple{<:Any,SupervisedDeterministic}
     weights::Vector{Float64}
     Averager(modelnames, models, weights) =
         new{modelnames}(models, weights)
@@ -359,7 +359,7 @@ function MLJBase.fit(averager::Averager{modelnames},
     predictions = hcat([predict(mach, Xs) for mach in machines]...)
     yhat = (1/sum(weights))*(predictions*weights)
 
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     return!(mach, averager, verbosity)
 end
 
@@ -379,7 +379,7 @@ end
 
 ## DATA FRONT-END IN AN EXPORTED LEARNING NETWORK
 
-mutable struct Scale <: MLJBase.Static
+mutable struct Scale <: MLJBase.StaticTransformer
     scaling::Float64
 end
 
@@ -393,7 +393,7 @@ function MLJBase.inverse_transform(s::Scale, _, X)
     MLJBase.table(MLJBase.matrix(X) / s.scaling, prototype=X)
 end
 
-mutable struct ElephantModel <: ProbabilisticComposite
+mutable struct ElephantModel <: SupervisedProbabilisticComposite
     scaler
     clf
     cache::Bool
@@ -413,7 +413,7 @@ function MLJBase.fit(model::ElephantModel, verbosity, X, y)
     mach2 = machine(clf, W, ys, cache=model.cache)
     yhat = predict(mach2, W)
 
-    mach = machine(Probabilistic(), Xs, ys, predict=yhat)
+    mach = machine(SupervisedProbabilistic(), Xs, ys, predict=yhat)
     return!(mach, model, verbosity)
 end
 

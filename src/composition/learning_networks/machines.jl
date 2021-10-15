@@ -1,10 +1,11 @@
 ## LEARNING NETWORK MACHINES
 
-surrogate(::Type{<:Deterministic})  = Deterministic()
-surrogate(::Type{<:Probabilistic})  = Probabilistic()
-surrogate(::Type{<:Unsupervised}) = Unsupervised()
-surrogate(::Type{<:Static}) = Static()
-
+# create surrogate type helpers
+for T in MMI.ABSTRACT_MODEL_SUBTYPES
+    quote
+        surrogate(::Type{<:$T})  = $T()
+    end |> eval
+end
 
 """
     model_supertype(signature)
@@ -37,12 +38,12 @@ function model_supertype(signature)
     if :predict in operations
         node = signature.predict
         if node isa Source
-            return Deterministic
+            return SupervisedDeterministic
         end
         if node.machine !== nothing
             model = node.machine.model
-            model isa Deterministic && return Deterministic
-            model isa Probabilistic && return Probabilistic
+            model isa SupervisedDeterministic && return SupervisedDeterministic
+            model isa SupervisedProbabilistic && return SupervisedProbabilistic
         end
     end
 
@@ -52,35 +53,29 @@ end
 
 caches_data_by_default(::Type{<:Surrogate}) = false
 
-const ERR_MUST_PREDICT = ArgumentError(
-    "You must specify at least `predict=<some node>`. ")
-const ERR_MUST_TRANSFORM = ArgumentError(
-    "You must specify at least `transform=<some node>`. ")
 const ERR_MUST_OPERATE = ArgumentError(
     "You must specify at least one operation, as in `predict=<some node>`. ")
 const ERR_MUST_SPECIFY_SOURCES = ArgumentError(
     "You must specify at least one source `Xs`, as in "*
     "`machine(surrogate_model, Xs, ...; kwargs...)`. ")
 
-function check_surrogate_machine(::Surrogate, signature, _sources)
+function check_surrogate_machine(::Static, signature, _sources)
     isempty(signature) && throw(ERR_MUST_OPERATE)
-    isempty(_sources) && throw(ERR_MUST_SPECIFY_SOURCES)
     return nothing
 end
 
-function check_surrogate_machine(::Union{Supervised,SupervisedAnnotator},
+function check_surrogate_machine(::Supervised,
                                  signature,
                                  _sources)
-    isempty(signature) && throw(ERR_MUST_PREDICT)
+    isempty(signature) && throw(ERR_MUST_OPERATE)
     length(_sources) > 1 || throw(err_supervised_nargs())
     return nothing
 end
 
-function check_surrogate_machine(::Union{Unsupervised},
+function check_surrogate_machine(::Unsupervised,
                                  signature,
                                  _sources)
-    isempty(signature) && throw(ERR_MUST_TRANSFORM)
-    length(_sources) < 2 || throw(err_unsupervised_nargs())
+    isempty(signature) && throw(ERR_MUST_OPERATE)
     return nothing
 end
 
@@ -112,10 +107,10 @@ function machine(_sources::Source...; pair_itr...)
     T = model_supertype(signature)
     if T == nothing
         @warn "Unable to infer surrogate model type. \n"*
-            "Using Deterministic(). To override specify "*
+            "Using SupervisedDeterministic(). To override specify "*
             "surrogate model, as in "*
-        "`machine(Probabilistic(), ...)` or `machine(Interval(), ...)`"
-        model = Deterministic()
+        "`machine(SupervisedProbabilistic(), ...)` or `machine(Interval(), ...)`"
+        model = SupervisedDeterministic()
     else
         model = surrogate(T)
     end
@@ -277,7 +272,7 @@ for composing standardization (whitening) with a deterministic
 regressor:
 
 ```
-mutable struct MyComposite <: DeterministicComposite
+mutable struct MyComposite <: SupervisedDeterministicComposite
     regressor
 end
 
@@ -291,7 +286,7 @@ function MLJBase.fit(model::MyComposite, verbosity, X, y)
     mach2 = machine(model.regressor, Xwhite, ys)
     yhat = predict(mach2, Xwhite)
 
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     return!(mach, model, verbosity)
 end
 ```

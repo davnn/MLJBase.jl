@@ -26,7 +26,7 @@ function input_target_scitypes(models, metalearner)
 end
 
 
-mutable struct DeterministicStack{modelnames, inp_scitype, tg_scitype} <: DeterministicComposite
+mutable struct DeterministicStack{modelnames, inp_scitype, tg_scitype} <: SupervisedDeterministicComposite
    models::Vector{Supervised}
    metalearner::Deterministic
    resampling
@@ -36,7 +36,7 @@ mutable struct DeterministicStack{modelnames, inp_scitype, tg_scitype} <: Determ
    end
 end
 
-mutable struct ProbabilisticStack{modelnames, inp_scitype, tg_scitype} <: ProbabilisticComposite
+mutable struct ProbabilisticStack{modelnames, inp_scitype, tg_scitype} <: SupervisedProbabilisticComposite
     models::Vector{Supervised}
     metalearner::Probabilistic
     resampling
@@ -143,13 +143,13 @@ function Stack(;metalearner=nothing, resampling=CV(), named_models...)
     modelnames = keys(nt)
     models = collect(nt)
 
-    if metalearner isa Deterministic
+    if metalearner isa SupervisedDeterministic
         stack =  DeterministicStack(modelnames, models, metalearner, resampling)
-    elseif metalearner isa Probabilistic
+    elseif metalearner isa SupervisedProbabilistic
         stack = ProbabilisticStack(modelnames, models, metalearner, resampling)
     else
         throw(ArgumentError("The metalearner should be a subtype
-                    of $(Union{Deterministic, Probabilistic})"))
+                    of $(Union{SupervisedDeterministic, SupervisedProbabilistic})"))
     end
     # Issuing clean! statement
     message = MMI.clean!(stack)

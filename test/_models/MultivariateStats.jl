@@ -32,7 +32,7 @@ $RIDGE_DESCR
 
 * `lambda=1.0`: non-negative parameter for the regularization strength.
 """
-@mlj_model mutable struct RidgeRegressor <: MLJBase.Deterministic
+@mlj_model mutable struct RidgeRegressor <: MLJBase.SupervisedDeterministic
     lambda::Real = 1.0::(_ ≥ 0)
 end
 
@@ -76,7 +76,7 @@ $PCA_DESCR
 * `pratio=0.99`: ratio of variance preserved
 * `mean=nothing`: if set to nothing centering will be computed and applied, if set to `0` no centering (assumed pre-centered), if a vector is passed, the centering is done with that vector.
 """
-@mlj_model mutable struct PCA <: MLJBase.Unsupervised
+@mlj_model mutable struct PCA <: MLJBase.UnsupervisedTransformer
     maxoutdim::Union{Nothing,Int} = nothing::(_ === nothing || _ ≥ 1)
     method::Symbol  = :auto::(_ in (:auto, :cov, :svd))
     pratio::Float64 = 0.99::(0.0 < _ ≤ 1.0)

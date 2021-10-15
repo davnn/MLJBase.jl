@@ -68,27 +68,27 @@ end
     @test MLJBase.value(weird, yhat, X, y, w) ≈ mae(yhat, y, X.weight .* w)
 end
 
-mutable struct DRegressor <: Deterministic end
+mutable struct DRegressor <: SupervisedDeterministic end
 MLJBase.target_scitype(::Type{<:DRegressor}) =
     AbstractVector{<:Continuous}
 
-mutable struct D2Regressor <: Deterministic end
+mutable struct D2Regressor <: SupervisedDeterministic end
 MLJBase.target_scitype(::Type{<:D2Regressor}) =
     AbstractVector{Continuous}
 
-mutable struct DClassifier <: Deterministic end
+mutable struct DClassifier <: SupervisedDeterministic end
 MLJBase.target_scitype(::Type{<:DClassifier}) =
     AbstractVector{<:Finite}
 
-mutable struct PClassifier <: Probabilistic end
+mutable struct PClassifier <: SupervisedProbabilistic end
 MLJBase.target_scitype(::Type{<:PClassifier}) =
     AbstractVector{<:Finite}
 
-mutable struct PRegressor <: Probabilistic end
+mutable struct PRegressor <: SupervisedProbabilistic end
 MLJBase.target_scitype(::Type{<:PRegressor}) =
     AbstractVector{<:Continuous}
 
-mutable struct PCountRegressor <: Probabilistic end
+mutable struct PCountRegressor <: SupervisedProbabilistic end
 MLJBase.target_scitype(::Type{<:PCountRegressor}) =
     AbstractVector{<:Count}
 

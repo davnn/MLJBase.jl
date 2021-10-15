@@ -42,7 +42,7 @@ $KNNRegressorDescription
 
 $KNNFields
 """
-@mlj_model mutable struct KNNRegressor <: MLJBase.Deterministic
+@mlj_model mutable struct KNNRegressor <: MLJBase.SupervisedDeterministic
     K::Int            = 5::(_ > 0)
     algorithm::Symbol = :kdtree::(_ in (:kdtree, :brutetree, :balltree))
     metric::Metric    = Euclidean()
@@ -58,7 +58,7 @@ $KNNClassifierDescription
 
 $KNNFields
 """
-@mlj_model mutable struct KNNClassifier <: MLJBase.Probabilistic
+@mlj_model mutable struct KNNClassifier <: MLJBase.SupervisedProbabilistic
     K::Int            = 5::(_ > 0)
     algorithm::Symbol = :kdtree::(_ in (:kdtree, :brutetree, :balltree))
     metric::Metric    = Euclidean()

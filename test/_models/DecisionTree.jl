@@ -57,7 +57,7 @@ package documentation cited above.
 
 
 """
-@mlj_model mutable struct DecisionTreeClassifier <: MLJBase.Probabilistic
+@mlj_model mutable struct DecisionTreeClassifier <: MLJBase.SupervisedProbabilistic
     pruning_purity::Float64         = 1.0::(_ ≤ 1)
     max_depth::Int                  = (-)(1)::(_ ≥ -1)
     min_samples_leaf::Int           = 1::(_ ≥ 0)
@@ -155,7 +155,7 @@ For post-fit pruning, set `post-prune=true` and set
 package documentation cited above.
 
 """
-@mlj_model mutable struct DecisionTreeRegressor <: MLJBase.Deterministic
+@mlj_model mutable struct DecisionTreeRegressor <: MLJBase.SupervisedDeterministic
     pruning_purity_threshold::Float64 = 0.0::(0 ≤ _ ≤ 1)
     max_depth::Int					  = (-)(1)::(_ ≥ -1)
     min_samples_leaf::Int			  = 5::(_ ≥ 0)

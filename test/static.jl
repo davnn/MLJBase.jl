@@ -8,7 +8,7 @@ rng = StableRNG(5312515)
 
 ## SIMPLE UNIVARIATE FUNCTION
 
-mutable struct Scale <: MLJBase.Static
+mutable struct Scale <: MLJBase.StaticTransformer
     scaling::Float64
 end
 
@@ -37,7 +37,7 @@ IR = inverse_transform(s, nothing, R)
 
 ## MULTIVARIATE FUNCTION
 
-mutable struct PermuteArgs <: MLJBase.Static
+mutable struct PermuteArgs <: MLJBase.StaticTransformer
     permutation::NTuple{N,Int} where N
 end
 

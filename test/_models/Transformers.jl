@@ -33,7 +33,7 @@ Alternatively, if a non-empty `features` is specified, then only the
 specified features are used. Throws an error if a recorded or
 specified feature is not present in the transformation input.
 """
-mutable struct FeatureSelector <: MLJBase.Unsupervised
+mutable struct FeatureSelector <: MLJBase.UnsupervisedTransformer
     features::Vector{Symbol}
 end
 
@@ -95,7 +95,7 @@ The transformation is chosen so that the vector on which the
     v_approx = inverse_transform(discretizer, w) # reconstruction of v from w
 
 """
-mutable struct UnivariateDiscretizer <:MLJBase.Unsupervised
+mutable struct UnivariateDiscretizer <:MLJBase.UnsupervisedTransformer
     n_classes::Int
 end
 
@@ -189,7 +189,7 @@ UnivariateStandardizer()
 
 Unsupervised model for standardizing (whitening) univariate data.
 """
-mutable struct UnivariateStandardizer <: MLJBase.Unsupervised end
+mutable struct UnivariateStandardizer <: MLJBase.UnsupervisedTransformer end
 
 function MLJBase.fit(transformer::UnivariateStandardizer, verbosity::Int,
              v::AbstractVector{T}) where T<:Real
@@ -247,7 +247,7 @@ names of features to be standardized.
     │ 3   │ 1.14708   │ 3     │
 
 """
-mutable struct Standardizer <: MLJBase.Unsupervised
+mutable struct Standardizer <: MLJBase.UnsupervisedTransformer
     features::Vector{Symbol}
 end
 
@@ -374,7 +374,7 @@ positive shift `c` of `0.2` times the data mean. If there are no zero
 values, then no shift is applied.
 
 """
-mutable struct UnivariateBoxCoxTransformer <: MLJBase.Unsupervised
+mutable struct UnivariateBoxCoxTransformer <: MLJBase.UnsupervisedTransformer
     n::Int
     shift::Bool
 end
@@ -450,7 +450,7 @@ features present in the fit data, but no new features can be present.
  CategoricalPool object encountered during the fit.
 
 """
-mutable struct OneHotEncoder <: MLJBase.Unsupervised
+mutable struct OneHotEncoder <: MLJBase.UnsupervisedTransformer
     features::Vector{Symbol}
     drop_last::Bool
     ordered_factor::Bool

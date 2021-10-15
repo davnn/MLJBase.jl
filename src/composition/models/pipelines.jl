@@ -111,19 +111,20 @@ pipe_argument_error(v) =
 
 function super_type(prediction_type::Symbol)
     if prediction_type == :deterministic
-        return Deterministic
+        return SupervisedDeterministic
     elseif prediction_type == :probabilistic
-        return Probabilistic
+        return SupervisedProbabilistic
     elseif prediction_type == :interval
-        return Interval
+        return SupervisedInterval
     else
-        return Unsupervised
+        return UnsupervisedTransformer
     end
 end
 
 function super_type(M::Type{<:Model})
-    options = [Deterministic, Probabilistic,
-               Interval, Unsupervised]
+    options = [SupervisedDeterministic, SupervisedProbabilistic,
+               SupervisedInterval, UnsupervisedTransformer,
+               StaticTransformer]
     idx = findfirst(super -> M <: super, options)
     return options[idx]
 end
@@ -343,7 +344,7 @@ function pipeline_preprocess(modl, exs...)
                            "`prediction_type=$pred_type`. ")
         elseif supervised_is_last
             if operation != predict
-                super = Deterministic
+                super = SupervisedDeterministic
             else
                 super = super_type(supervised_model)
             end
@@ -351,7 +352,7 @@ function pipeline_preprocess(modl, exs...)
             @info "Treating pipeline as a `Deterministic` predictor.\n"*
             "To override, specify `prediction_type=...` "*
             "(options: $options_pretty). "
-            super = Deterministic
+            super = SupervisedDeterministic
         end
     else
         if pred_type !== nothing
@@ -359,7 +360,7 @@ function pipeline_preprocess(modl, exs...)
             "component models. Ignoring declaration "*
             "`prediction_type=$(pred_type)`. "
         end
-        super = is_static ? Static : Unsupervised
+        super = is_static ? StaticTransformer : UnsupervisedTransformer
     end
 
     target isa MLJBase.WrappedFunction && inverse == nothing &&
@@ -373,7 +374,7 @@ function pipeline_preprocess(modl, exs...)
     # check if attempting a target inversion immediately after a
     # probablisitic prediction:
     if target != nothing  &&
-        supervised_model isa Probabilistic &&
+        supervised_model isa SupervisedProbabilistic &&
         operation == predict && (supervised_is_last || !invert_last)
         @warn "Pipeline is applying a target inversion "*
         "immediately after a probabilistic target prediction. "*

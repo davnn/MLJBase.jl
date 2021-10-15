@@ -12,7 +12,7 @@ using Statistics
 X = (x1=rand(3), x2=rand(3), x3=rand(3))
 y = float.([1, 2, 3])
 
-mutable struct Bar <: DeterministicComposite
+mutable struct Bar <: SupervisedDeterministicComposite
     scale::Float64
     rgs
     input_stand
@@ -30,7 +30,7 @@ function MLJBase.fit(model::Bar, verbosity, X, y)
     mach3 = machine(model.rgs, X1, z)
     zhat = predict(mach3, X1)
     yhat = inverse_transform(mach2, zhat)
-    mach = machine(Deterministic(), Xs, ys; predict=yhat)
+    mach = machine(SupervisedDeterministic(), Xs, ys; predict=yhat)
     return!(mach, model, verbosity)
 end
 
@@ -65,7 +65,7 @@ fit!(mach, verbosity=0)
 end
 
 
-mutable struct Mixer <: DeterministicComposite
+mutable struct Mixer <: SupervisedDeterministicComposite
     model1
     model2
     misc::Int
@@ -85,7 +85,7 @@ end
 
         yhat = 0.5*yhat1 + 0.5*yhat2
 
-        learning_mach = machine(Deterministic(), Xs, ys, predict=yhat)
+        learning_mach = machine(SupervisedDeterministic(), Xs, ys, predict=yhat)
         return!(learning_mach, model, verbosity)
     end
 

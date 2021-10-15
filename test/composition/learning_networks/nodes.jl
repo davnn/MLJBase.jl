@@ -294,7 +294,7 @@ end
 
 end
 
-mutable struct PermuteArgs <: MLJBase.Static
+mutable struct PermuteArgs <: MLJBase.StaticTransformer
     permutation::NTuple{N,Int} where N
 end
 
@@ -395,7 +395,7 @@ end
     @test_logs fit!(yhat, verbosity=0, rows=1:2)
 end
 
-mutable struct Scale <: MLJBase.Static
+mutable struct Scale <: MLJBase.StaticTransformer
     scaling::Float64
 end
 

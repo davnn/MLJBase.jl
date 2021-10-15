@@ -27,7 +27,7 @@ rng = StableRNG(661)
     @test_throws ArgumentError predict_mode(rgs, fitresult, X)
 end
 
-mutable struct UnivariateFiniteFitter <: MLJModelInterface.Probabilistic
+mutable struct UnivariateFiniteFitter <: MLJModelInterface.SupervisedProbabilistic
     alpha::Float64
 end
 UnivariateFiniteFitter(;alpha=1.0) = UnivariateFiniteFitter(alpha)
